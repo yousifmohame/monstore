@@ -129,7 +129,7 @@ const Hero = React.memo(() => {
       <section className="relative bg-gradient-to-br from-primary-50 via-white to-secondary-50 min-h-screen flex items-center justify-center">
         <div className="text-center text-red-500 p-4 max-w-md mx-auto">
           <p className="text-lg font-medium">حدث خطأ أثناء تحميل البيانات</p>
-          <p className="text-sm mt-2">{productsError.message}</p>
+          {productsError && (<p className="text-sm mt-2">{productsError}</p>)}
           <button 
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-primary-500 text-white rounded hover:bg-primary-600 transition"
