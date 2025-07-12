@@ -1,6 +1,6 @@
 /** @format */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   collection,
   doc,
@@ -23,6 +23,7 @@ import {
 } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
 
+// ✅ Corrected Interface
 export interface Category {
   id: string;
   nameAr: string;
@@ -36,6 +37,7 @@ export interface Category {
 
   count?: {
     products: number;
+    [key: string]: number;
   };
   emoji?: string;
   color?: string;
@@ -45,8 +47,14 @@ export interface Category {
   updatedAt?: any;
 }
 
+interface CategoryProductCount extends Category {
+  count: {
+    products: number;
+  };
+}
+
 export const useCategories = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryProductCount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +67,7 @@ export const useCategories = () => {
       const q = query(categoriesRef, orderBy("sortOrder", "asc"));
       const querySnapshot = await getDocs(q);
 
-      const fetchedCategories: Category[] = [];
+      const fetchedCategories: CategoryProductCount[] = [];
 
       for (const document of querySnapshot.docs) {
         const categoryData = document.data() as Category;
@@ -121,7 +129,7 @@ export const useCategories = () => {
         count: {
           products: productsSnapshot.size,
         },
-      };
+      } as CategoryProductCount;
     } catch (error: any) {
       console.error("Error fetching category by slug:", error);
       setError(error.message);
@@ -138,14 +146,12 @@ export const useCategories = () => {
     try {
       setLoading(true);
 
-      // Create a new category document with a generated ID
       const categoriesRef = collection(db, "categories");
       const newCategoryRef = doc(categoriesRef);
       const categoryId = newCategoryRef.id;
 
       let imageUrl = categoryData.imageUrl;
 
-      // Upload image if provided
       if (imageFile) {
         const imageRef = ref(
           storage,
@@ -155,10 +161,8 @@ export const useCategories = () => {
         imageUrl = await getDownloadURL(imageRef);
       }
 
-      // Add timestamps
       const timestamp = serverTimestamp();
 
-      // Create the category document
       await setDoc(newCategoryRef, {
         ...categoryData,
         imageUrl,
@@ -166,8 +170,7 @@ export const useCategories = () => {
         updatedAt: timestamp,
       });
 
-      // Update local state
-      const newCategory: Category = {
+      const newCategory: CategoryProductCount = {
         id: categoryId,
         ...categoryData,
         imageUrl,
@@ -175,7 +178,6 @@ export const useCategories = () => {
       };
 
       setCategories([...categories, newCategory]);
-
       setLoading(false);
       return categoryId;
     } catch (error: any) {
@@ -203,7 +205,6 @@ export const useCategories = () => {
 
       let imageUrl = categoryData.imageUrl;
 
-      // Upload new image if provided
       if (imageFile) {
         const imageRef = ref(
           storage,
@@ -212,7 +213,6 @@ export const useCategories = () => {
         await uploadBytes(imageRef, imageFile);
         imageUrl = await getDownloadURL(imageRef);
 
-        // Delete old image if it's in our storage
         const currentCategory = categoryDoc.data() as Category;
         if (
           currentCategory.imageUrl &&
@@ -230,21 +230,19 @@ export const useCategories = () => {
         }
       }
 
-      // Update category document
       await updateDoc(categoryRef, {
         ...categoryData,
         ...(imageUrl && { imageUrl }),
         updatedAt: serverTimestamp(),
       });
 
-      // Update local state
       setCategories(
         categories.map((category) =>
           category.id === categoryId
-            ? { 
-                ...category, 
-                ...categoryData, 
-                ...(imageUrl && { imageUrl }) 
+            ? {
+                ...category,
+                ...categoryData,
+                ...(imageUrl && { imageUrl }),
               }
             : category
         )
@@ -273,7 +271,6 @@ export const useCategories = () => {
 
       const categoryData = categoryDoc.data() as Category;
 
-      // Delete image from storage if it's in our storage
       if (
         categoryData.imageUrl &&
         categoryData.imageUrl.includes("firebasestorage")
@@ -289,10 +286,8 @@ export const useCategories = () => {
         }
       }
 
-      // Delete category document
       await deleteDoc(categoryRef);
 
-      // Update local state
       setCategories(
         categories.filter((category) => category.id !== categoryId)
       );
