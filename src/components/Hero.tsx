@@ -58,7 +58,6 @@ const Hero = React.memo(() => {
     if (!featuredProduct) return;
     addToCart({
       id: featuredProduct.id,
-      productId: featuredProduct.id,
       name: featuredProduct.nameAr || featuredProduct.name,
       price: featuredProduct.salePrice || featuredProduct.price,
       image: featuredProduct.images?.[0]?.imageUrl || '/placeholder.jpg',
