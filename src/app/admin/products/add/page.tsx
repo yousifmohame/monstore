@@ -28,7 +28,6 @@ interface Variant {
   sku: string;
 }
 
-// Helper function to generate slug
 const generateSlug = (text: string) => {
   return text
     .toLowerCase()
@@ -42,13 +41,13 @@ export default function AddProductPage() {
 
   // Hooks
   const { addProduct, loading: isSubmitting } = useProducts();
-  const { categories, fetchCategories } = useCategories(); // Fetch dynamic categories
+  const { categories, fetchCategories } = useCategories();
 
   // State
   const [formData, setFormData] = useState({
     nameAr: '',
     name: '',
-    slug: '', // New slug field
+    slug: '',
     descriptionAr: '',
     description: '',
     detailedDescriptionAr: '',
@@ -195,7 +194,7 @@ export default function AddProductPage() {
         weight: formData.weight ? parseFloat(formData.weight) : null,
         tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
         tagsAr: formData.tagsAr.split(',').map((tag) => tag.trim()).filter(Boolean),
-        images: [],
+        images: media.map(item => ({ imageUrl: item.url })),
         colors: selectedColors,
         sizes: selectedSizes,
         variants: formData.hasVariants ? variants : [],
@@ -204,8 +203,12 @@ export default function AddProductPage() {
         isActive: true,
       };
 
-      const filesToUpload = media.map((item) => item.file);
-      await addProduct(productData as any, filesToUpload);
+      // Filter out any items without files and cast to File[]
+      const filesToUpload = media
+        .filter(item => item.file)
+        .map(item => item.file as File);
+
+      await addProduct(productData, filesToUpload);
 
       alert('تم إضافة المنتج بنجاح!');
       router.push('/admin/products');
