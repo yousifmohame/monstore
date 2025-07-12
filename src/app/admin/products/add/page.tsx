@@ -1,5 +1,4 @@
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -21,11 +20,43 @@ import { useProducts } from '@/hooks/useProducts';
 import { useCategories, Category } from '@/hooks/useCategories';
 import { colorOptions, sizeOptions, mockCategories } from '@/lib/mockData';
 
+// Define Variant interface
 interface Variant {
   colorId: string | null;
   sizeId: string | null;
   stock: number;
   sku: string;
+}
+
+// Define Product interface
+interface Product {
+  nameAr: string;
+  name: string;
+  slug: string;
+  descriptionAr: string;
+  description: string;
+  detailedDescriptionAr?: string;
+  detailedDescription?: string;
+  price: number;
+  salePrice: number | null;
+  sku: string;
+  stock: number;
+  categoryId: string;
+  tags: string[];
+  tagsAr: string[];
+  featured: boolean;
+  newArrival: boolean;
+  bestSeller: boolean;
+  onSale: boolean;
+  weight: number | null;
+  colors: string[];
+  sizes: string[];
+  variants: Variant[];
+  images: { imageUrl: string }[];
+  rating: number;
+  reviewsCount: number;
+  isActive: boolean;
+  hasVariants: boolean;
 }
 
 const generateSlug = (text: string) => {
@@ -66,7 +97,6 @@ export default function AddProductPage() {
     weight: '',
     hasVariants: false,
   });
-
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -83,7 +113,6 @@ export default function AddProductPage() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       if (name === 'hasVariants') {
@@ -110,13 +139,17 @@ export default function AddProductPage() {
 
   const handleColorToggle = (colorId: string) => {
     setSelectedColors((prev) =>
-      prev.includes(colorId) ? prev.filter((id) => id !== colorId) : [...prev, colorId]
+      prev.includes(colorId)
+        ? prev.filter((id) => id !== colorId)
+        : [...prev, colorId]
     );
   };
 
   const handleSizeToggle = (sizeId: string) => {
     setSelectedSizes((prev) =>
-      prev.includes(sizeId) ? prev.filter((id) => id !== sizeId) : [...prev, sizeId]
+      prev.includes(sizeId)
+        ? prev.filter((id) => id !== sizeId)
+        : [...prev, sizeId]
     );
   };
 
@@ -133,7 +166,6 @@ export default function AddProductPage() {
     if (!formData.hasVariants) return;
     const newVariants: Variant[] = [];
     const baseSkuCode = formData.sku || 'PROD';
-
     if (selectedColors.length === 0 && selectedSizes.length === 0) {
       newVariants.push({ colorId: null, sizeId: null, stock: parseInt(formData.stock) || 0, sku: baseSkuCode });
     } else if (selectedColors.length > 0 && selectedSizes.length === 0) {
@@ -162,7 +194,6 @@ export default function AddProductPage() {
         });
       });
     }
-
     setVariants(newVariants);
     setShowVariantsTable(true);
   };
@@ -175,62 +206,59 @@ export default function AddProductPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (media.length === 0) {
-    alert('يجب إضافة صورة واحدة على الأقل للمنتج.');
-    return;
-  }
-  if (!formData.categoryId) {
-    alert('يجب اختيار فئة للمنتج.');
-    return;
-  }
+    e.preventDefault();
+    if (media.length === 0) {
+      alert('يجب إضافة صورة واحدة على الأقل للمنتج.');
+      return;
+    }
+    if (!formData.categoryId) {
+      alert('يجب اختيار فئة للمنتج.');
+      return;
+    }
 
-  try {
-    // Prepare the product data with explicit typing
-    const productData: Omit<Product, "id" | "createdAt" | "updatedAt"> = {
-      nameAr: formData.nameAr.trim(),
-      name: formData.name.trim(),
-      slug: formData.slug.trim(),
-      descriptionAr: formData.descriptionAr.trim(),
-      description: formData.description.trim(),
-      detailedDescriptionAr: formData.detailedDescriptionAr.trim(),
-      detailedDescription: formData.detailedDescription.trim(),
-      price: parseFloat(formData.price) || 0,
-      salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
-      sku: formData.sku.trim(),
-      stock: getTotalStock(),
-      categoryId: formData.categoryId,
-      tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
-      tagsAr: formData.tagsAr.split(',').map(t => t.trim()).filter(Boolean),
-      featured: formData.featured,
-      newArrival: formData.newArrival,
-      bestSeller: formData.bestSeller,
-      onSale: formData.onSale,
-      weight: formData.weight ? parseFloat(formData.weight) : null,
-      colors: selectedColors,
-      sizes: selectedSizes,
-      variants: formData.hasVariants ? variants : [],
-      images: media.map(item => ({ imageUrl: item.url })),
-      rating: 0,
-      reviewsCount: 0,
-      isActive: true,
-      hasVariants: formData.hasVariants,
-    };
+    try {
+      const productData: Product = {
+        nameAr: formData.nameAr,
+        name: formData.name,
+        slug: formData.slug,
+        descriptionAr: formData.descriptionAr,
+        description: formData.description,
+        detailedDescriptionAr: formData.detailedDescriptionAr,
+        detailedDescription: formData.detailedDescription,
+        price: parseFloat(formData.price) || 0,
+        salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
+        sku: formData.sku,
+        stock: getTotalStock(),
+        categoryId: formData.categoryId,
+        tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+        tagsAr: formData.tagsAr.split(',').map((tag) => tag.trim()).filter(Boolean),
+        featured: formData.featured,
+        newArrival: formData.newArrival,
+        bestSeller: formData.bestSeller,
+        onSale: formData.onSale,
+        weight: formData.weight ? parseFloat(formData.weight) : null,
+        colors: selectedColors,
+        sizes: selectedSizes,
+        variants: formData.hasVariants ? variants : [],
+        images: media.map(item => ({ imageUrl: item.url })),
+        rating: 0,
+        reviewsCount: 0,
+        isActive: true,
+        hasVariants: formData.hasVariants,
+      };
 
-    // Prepare files for upload
-    const filesToUpload = media
-      .filter((item): item is MediaItem & { file: File } => item.file !== undefined)
-      .map(item => item.file);
+      const filesToUpload = media
+        .filter(item => item.file)
+        .map(item => item.file as File);
 
-    await addProduct(productData, filesToUpload);
-
-    alert('تم إضافة المنتج بنجاح!');
-    router.push('/admin/products');
-  } catch (error) {
-    console.error("Failed to add product:", error);
-    alert('حدث خطأ أثناء إضافة المنتج. يرجى مراجعة الكونسول.');
-  }
-};
+      await addProduct(productData, filesToUpload);
+      alert('تم إضافة المنتج بنجاح!');
+      router.push('/admin/products');
+    } catch (error) {
+      console.error("Failed to add product:", error);
+      alert('حدث خطأ أثناء إضافة المنتج. يرجى مراجعة الكونسول.');
+    }
+  };
 
   if (!user || !profile?.isAdmin) {
     return (
