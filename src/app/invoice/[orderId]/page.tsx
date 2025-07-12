@@ -13,41 +13,39 @@ import { useOrders } from '@/hooks/useOrders';
 export default function InvoicePage({ params }: { params: { orderId: string } }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { fetchOrderById, fetchOrderByOrderNumber, loading, error } = useOrders();
+  const { fetchOrderById, fetchOrderByOrderNumber, loading } = useOrders();
   const [order, setOrder] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null); // ✅ السطر المهم المضاف
 
-  // In your page component
-useEffect(() => {
-  const loadOrder = async () => {
-    try {
-      if (!user) {
-        console.log('Waiting for authentication...');
-        return;
+  useEffect(() => {
+    const loadOrder = async () => {
+      try {
+        if (!user) {
+          console.log('Waiting for authentication...');
+          return;
+        }
+
+        console.log('Fetching order with user:', user.id);
+
+        let order = await fetchOrderById(params.orderId);
+
+        if (!order) {
+          order = await fetchOrderByOrderNumber(params.orderId);
+        }
+
+        if (order) {
+          setOrder(order);
+        } else {
+          setError('Order not found');
+        }
+      } catch (error) {
+        console.error('Order load failed:', error);
+        setError('Failed to load order');
       }
+    };
 
-      console.log('Fetching order with user:', user.id);
-      
-      // First try by ID
-      let order = await fetchOrderById(params.orderId);
-      
-      // If not found, try by order number
-      if (!order) {
-        order = await fetchOrderByOrderNumber(params.orderId);
-      }
-
-      if (order) {
-        setOrder(order);
-      } else {
-        setError('Order not found');
-      }
-    } catch (error) {
-      console.error('Order load failed:', error);
-      setError('Failed to load order');
-    }
-  };
-
-  loadOrder();
-}, [user, params.orderId]); // Add user to dependencies
+    loadOrder();
+  }, [user, params.orderId]);
 
   const handlePrint = () => {
     window.print();
@@ -83,10 +81,7 @@ useEffect(() => {
         <Header />
         <div className="container-custom py-20 text-center">
           <div className="loading-dots mb-4">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
+            <div></div><div></div><div></div><div></div>
           </div>
           <p className="text-xl text-gray-600 font-medium">جاري تحميل الفاتورة...</p>
         </div>
@@ -117,40 +112,19 @@ useEffect(() => {
       <div className="container-custom py-8">
         {/* Header Actions */}
         <div className="flex items-center justify-between mb-8 print:hidden">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
-          >
+          <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-gray-800">
             <ArrowLeft className="h-5 w-5" />
             العودة
           </button>
           <div className="flex gap-3">
-            <motion.button
-              onClick={handleEmailInvoice}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Mail className="h-4 w-4" />
-              إرسال بالبريد
+            <motion.button onClick={handleEmailInvoice} className="btn-blue" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Mail className="h-4 w-4" /> إرسال بالبريد
             </motion.button>
-            <motion.button
-              onClick={handleDownload}
-              className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Download className="h-4 w-4" />
-              تحميل PDF
+            <motion.button onClick={handleDownload} className="btn-green" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Download className="h-4 w-4" /> تحميل PDF
             </motion.button>
-            <motion.button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Print className="h-4 w-4" />
-              طباعة
+            <motion.button onClick={handlePrint} className="btn-gray" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Print className="h-4 w-4" /> طباعة
             </motion.button>
           </div>
         </div>
