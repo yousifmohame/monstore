@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { auth } from '@/lib/firebase';
-import type { Product } from './useProducts';
+import type { Product, ProductImage } from './useProducts';
 
 export const useAdminProducts = () => {
     const [products, setProducts] = useState<Product[]>([]);
@@ -48,18 +48,44 @@ export const useAdminProducts = () => {
         }
     }, []);
 
-    const updateProduct = useCallback(async (productId: string, updateData: Partial<Product>, newImageFiles?: File[], imagesToDelete?: string[]) => {
+    // **الإضافة الجديدة: دالة إضافة منتج**
+    const addProduct = useCallback(async (productData: Omit<Product, "id" | "createdAt" | "updatedAt">, imageFiles: File[]) => {
+        setLoading(true);
+        try {
+            const idToken = await auth.currentUser?.getIdToken(true);
+            if (!idToken) throw new Error("Authentication required");
+
+            // في تطبيق حقيقي، يجب رفع الصور أولاً ثم إرسال الروابط
+            // هنا، سنرسل البيانات مباشرة إلى API الإضافة
+            const response = await fetch('/api/admin/products/add', { // نفترض وجود هذا الـ API
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({ productData, imagesCount: imageFiles.length }), // مثال
+            });
+            if (!response.ok) throw new Error('Failed to add product');
+            await fetchProducts();
+        } catch (err: any) {
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchProducts]);
+
+    const updateProduct = useCallback(async (productId: string, updateData: Partial<Product>) => {
         const idToken = await auth.currentUser?.getIdToken(true);
         if (!idToken) throw new Error("Authentication required");
-        // ملاحظة: منطق رفع الصور يجب أن يتم في API منفصل
         const response = await fetch(`/api/admin/products/${productId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
             body: JSON.stringify(updateData),
         });
         if (!response.ok) throw new Error('Failed to update product');
-        await fetchProducts(); // إعادة جلب القائمة لتحديثها
-    }, [fetchProducts]);
+        setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updateData } : p));
+    }, []);
 
     const deleteProduct = useCallback(async (productId: string) => {
         const idToken = await auth.currentUser?.getIdToken(true);
@@ -72,5 +98,5 @@ export const useAdminProducts = () => {
         setProducts(prev => prev.filter(p => p.id !== productId));
     }, []);
 
-    return { products, product, loading, error, fetchProducts, fetchProductById, updateProduct, deleteProduct };
+    return { products, product, loading, error, fetchProducts, fetchProductById, addProduct, updateProduct, deleteProduct };
 };
