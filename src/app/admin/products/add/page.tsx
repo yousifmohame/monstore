@@ -30,6 +30,7 @@ interface Variant {
 
 // Define Product interface
 interface Product {
+  id?: string;
   nameAr: string;
   name: string;
   slug: string;
@@ -53,10 +54,12 @@ interface Product {
   sizes: string[];
   variants: Variant[];
   images: { imageUrl: string }[];
-  rating: number;
-  reviewsCount: number;
-  isActive: boolean;
+  rating: number;         // ✅ Now allowed
+  reviewsCount: number;   // ✅ Now allowed
+  isActive: boolean;      // ✅ Now allowed
   hasVariants: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const generateSlug = (text: string) => {
@@ -206,59 +209,57 @@ export default function AddProductPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (media.length === 0) {
-      alert('يجب إضافة صورة واحدة على الأقل للمنتج.');
-      return;
-    }
-    if (!formData.categoryId) {
-      alert('يجب اختيار فئة للمنتج.');
-      return;
-    }
+  e.preventDefault();
 
-    try {
-      const productData: Product = {
-        nameAr: formData.nameAr,
-        name: formData.name,
-        slug: formData.slug,
-        descriptionAr: formData.descriptionAr,
-        description: formData.description,
-        detailedDescriptionAr: formData.detailedDescriptionAr,
-        detailedDescription: formData.detailedDescription,
-        price: parseFloat(formData.price) || 0,
-        salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
-        sku: formData.sku,
-        stock: getTotalStock(),
-        categoryId: formData.categoryId,
-        tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-        tagsAr: formData.tagsAr.split(',').map((tag) => tag.trim()).filter(Boolean),
-        featured: formData.featured,
-        newArrival: formData.newArrival,
-        bestSeller: formData.bestSeller,
-        onSale: formData.onSale,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
-        colors: selectedColors,
-        sizes: selectedSizes,
-        variants: formData.hasVariants ? variants : [],
-        images: media.map(item => ({ imageUrl: item.url })),
-        rating: 0,
-        reviewsCount: 0,
-        isActive: true,
-        hasVariants: formData.hasVariants,
-      };
+  if (media.length === 0) {
+    alert('يجب إضافة صورة واحدة على الأقل للمنتج.');
+    return;
+  }
+  if (!formData.categoryId) {
+    alert('يجب اختيار فئة للمنتج.');
+    return;
+  }
 
-      const filesToUpload = media
-        .filter(item => item.file)
-        .map(item => item.file as File);
+  try {
+    const baseProductData = {
+      nameAr: formData.nameAr,
+      name: formData.name,
+      slug: formData.slug,
+      descriptionAr: formData.descriptionAr,
+      description: formData.description,
+      detailedDescriptionAr: formData.detailedDescriptionAr,
+      detailedDescription: formData.detailedDescription,
+      price: parseFloat(formData.price) || 0,
+      salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
+      sku: formData.sku,
+      stock: getTotalStock(),
+      categoryId: formData.categoryId,
+      tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+      tagsAr: formData.tagsAr.split(',').map((tag) => tag.trim()).filter(Boolean),
+      featured: formData.featured,
+      newArrival: formData.newArrival,
+      bestSeller: formData.bestSeller,
+      onSale: formData.onSale,
+      weight: formData.weight ? parseFloat(formData.weight) : null,
+      colors: selectedColors,
+      sizes: selectedSizes,
+      variants: formData.hasVariants ? variants : [],
+      images: media.map(item => ({ imageUrl: item.url })),
+      hasVariants: formData.hasVariants,
+    };
 
-      await addProduct(productData, filesToUpload);
-      alert('تم إضافة المنتج بنجاح!');
-      router.push('/admin/products');
-    } catch (error) {
-      console.error("Failed to add product:", error);
-      alert('حدث خطأ أثناء إضافة المنتج. يرجى مراجعة الكونسول.');
-    }
-  };
+    const filesToUpload = media
+      .filter(item => item.file)
+      .map(item => item.file as File);
+
+    await addProduct(baseProductData, filesToUpload);
+    alert('تم إضافة المنتج بنجاح!');
+    router.push('/admin/products');
+  } catch (error) {
+    console.error("Failed to add product:", error);
+    alert('حدث خطأ أثناء إضافة المنتج. يرجى مراجعة الكونسول.');
+  }
+};
 
   if (!user || !profile?.isAdmin) {
     return (
