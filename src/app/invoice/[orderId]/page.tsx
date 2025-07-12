@@ -31,10 +31,10 @@ interface ShippingAddress {
 interface Order {
   orderNumber: string;
   createdAt: string | Date;
-  paymentStatus: 'PAID' | 'UNPAID';
+  paymentStatus: 'PAID' | 'PENDING' | 'FAILED' | 'UNPAID';
   paymentMethod: 'credit_card' | 'cash_on_delivery' | string;
   trackingNumber?: string;
-  status?: 'DELIVERED' | 'SHIPPED' | 'PROCESSING' | 'PENDING';
+  status?: 'DELIVERED' | 'SHIPPED' | 'PROCESSING' | 'PENDING' | 'CANCELLED';
   shippingAmount: number;
   taxAmount: number;
   subtotal: number;
@@ -164,9 +164,13 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
                 </p>
                 <p><span className="font-semibold">حالة الدفع:</span> 
                   <span className={`mr-2 px-2 py-1 rounded text-sm ${
-                    order.paymentStatus === 'PAID' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                    order.paymentStatus === 'PAID' ? 'bg-green-100 text-green-600' : 
+                    order.paymentStatus === 'FAILED' ? 'bg-red-100 text-red-600' : 
+                    'bg-yellow-100 text-yellow-600'
                   }`}>
-                    {order.paymentStatus === 'PAID' ? 'مدفوع' : 'غير مدفوع'}
+                    {order.paymentStatus === 'PAID' ? 'مدفوع' : 
+                     order.paymentStatus === 'FAILED' ? 'فشل الدفع' : 
+                     'قيد الانتظار'}
                   </span>
                 </p>
               </div>
@@ -189,7 +193,6 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
               <div className="space-y-2 text-gray-600">
                 <p>{order.shippingAddress.address}</p>
                 <p>{order.shippingAddress.city}, {order.shippingAddress.postalCode}</p>
-                
               </div>
             </div>
           </div>
@@ -212,7 +215,6 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
                     <tr key={index}>
                       <td className="border border-gray-200 p-3">
                         <div className="flex items-center gap-3">
-                          {/* **الإصلاح هنا: استخدام مكون Image** */}
                           <Image
                             src={item.productImage || '/placeholder.jpg'}
                             alt={item.productNameAr}
@@ -279,8 +281,11 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
                    order.paymentMethod}
                 </p>
                 <p><span className="font-semibold">حالة الدفع:</span> 
-                  <span className={`mr-2 ${order.paymentStatus === 'PAID' ? 'text-green-600' : 'text-red-600'}`}>
-                    {order.paymentStatus === 'PAID' ? 'مدفوع' : 'غير مدفوع'}
+                  <span className={`mr-2 ${order.paymentStatus === 'PAID' ? 'text-green-600' : 
+                    order.paymentStatus === 'FAILED' ? 'text-red-600' : 'text-yellow-600'}`}>
+                    {order.paymentStatus === 'PAID' ? 'مدفوع' : 
+                     order.paymentStatus === 'FAILED' ? 'فشل الدفع' : 
+                     'قيد الانتظار'}
                   </span>
                 </p>
               </div>
@@ -288,10 +293,15 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
                 <div>
                   <p><span className="font-semibold">رقم التتبع:</span> {order.trackingNumber}</p>
                   <p><span className="font-semibold">حالة الطلب:</span> 
-                    <span className="mr-2 text-green-600">
+                    <span className={`mr-2 ${
+                      order.status === 'DELIVERED' ? 'text-green-600' : 
+                      order.status === 'CANCELLED' ? 'text-red-600' : 
+                      'text-yellow-600'
+                    }`}>
                       {order.status === 'DELIVERED' ? 'تم التسليم' : 
                        order.status === 'SHIPPED' ? 'تم الشحن' : 
                        order.status === 'PROCESSING' ? 'قيد المعالجة' : 
+                       order.status === 'CANCELLED' ? 'ملغى' : 
                        'قيد الانتظار'}
                     </span>
                   </p>
