@@ -36,15 +36,14 @@ export interface Category {
 
   count?: {
     products: number;
-  }; // 🔁 عدد المنتجات
-  emoji?: string; // 🔁 رمز تعبيري للفئة
-  color?: string; // 🔁 لون الخلفية
-  subcategories?: string[]; // 🔁 فئات فرعية
+  };
+  emoji?: string;
+  color?: string;
+  subcategories?: string[];
 
   createdAt?: any;
   updatedAt?: any;
 }
-
 
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -62,20 +61,20 @@ export const useCategories = () => {
 
       const fetchedCategories: Category[] = [];
 
-      for (const documnet of querySnapshot.docs) {
-        const categoryData = documnet.data() as Category;
+      for (const document of querySnapshot.docs) {
+        const categoryData = document.data() as Category;
 
         // Count products for this category
         const productsRef = collection(db, "products");
         const productsQuery = query(
           productsRef,
-          where("categoryId", "==", documnet.id)
+          where("categoryId", "==", document.id)
         );
         const productsSnapshot = await getDocs(productsQuery);
 
         fetchedCategories.push({
           ...categoryData,
-          id: documnet.id,
+          id: document.id,
           count: {
             products: productsSnapshot.size,
           },
@@ -133,7 +132,7 @@ export const useCategories = () => {
   };
 
   const addCategory = async (
-    categoryData: Omit<Category, "id" | "createdAt" | "updatedAt">,
+    categoryData: Omit<Category, "id" | "createdAt" | "updatedAt" | "count">,
     imageFile?: File
   ) => {
     try {
@@ -189,7 +188,7 @@ export const useCategories = () => {
 
   const updateCategory = async (
     categoryId: string,
-    categoryData: Partial<Category>,
+    categoryData: Partial<Omit<Category, "id" | "count">>,
     imageFile?: File
   ) => {
     try {
@@ -242,7 +241,11 @@ export const useCategories = () => {
       setCategories(
         categories.map((category) =>
           category.id === categoryId
-            ? { ...category, ...categoryData, ...(imageUrl && { imageUrl }) }
+            ? { 
+                ...category, 
+                ...categoryData, 
+                ...(imageUrl && { imageUrl }) 
+              }
             : category
         )
       );
