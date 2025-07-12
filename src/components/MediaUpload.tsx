@@ -5,13 +5,12 @@ import { Upload, X, Image as ImageIcon, Plus, Video, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 
-// 1. تحديث الواجهة لتشمل كائن الملف
 export interface MediaItem {
   id: string;
-  url: string; // Data URL for preview
+  url: string;
   type: 'image' | 'video';
   name: string;
-  file: File; // The actual file object
+  file?: File; // Made optional
 }
 
 interface MediaUploadProps {
@@ -48,15 +47,13 @@ export default function MediaUpload({
         const reader = new FileReader();
         reader.onload = (e) => {
           if (e.target?.result) {
-            // 2. إضافة كائن الملف إلى جانب الرابط
-            const mediaItem: MediaItem = {
+            newMedia.push({
               id: `${Date.now()}-${i}`,
               url: e.target.result as string,
               type: isImage ? 'image' : 'video',
               name: file.name,
-              file: file // <--- إضافة مهمة
-            };
-            newMedia.push(mediaItem);
+              file: file
+            });
             if (newMedia.length === filesToProcess) {
               onMediaChange([...media, ...newMedia]);
             }
@@ -84,15 +81,7 @@ export default function MediaUpload({
   };
 
   const removeMedia = (id: string) => {
-    const newMedia = media.filter(item => item.id !== id);
-    onMediaChange(newMedia);
-  };
-
-  const moveMedia = (fromIndex: number, toIndex: number) => {
-    const newMedia = [...media];
-    const [movedItem] = newMedia.splice(fromIndex, 1);
-    newMedia.splice(toIndex, 0, movedItem);
-    onMediaChange(newMedia);
+    onMediaChange(media.filter(item => item.id !== id));
   };
 
   return (
@@ -104,7 +93,7 @@ export default function MediaUpload({
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
         <AnimatePresence>
-          {media.map((item, index) => (
+          {media.map((item) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, scale: 0.8 }}
@@ -116,7 +105,7 @@ export default function MediaUpload({
               {item.type === 'image' ? (
                 <Image
                   src={item.url}
-                  alt={`صورة المنتج ${index + 1}`}
+                  alt={item.name}
                   width={200}
                   height={200}
                   className="w-full h-full object-cover rounded-lg border-2 border-gray-200 group-hover:border-primary-300 transition-colors"
@@ -148,10 +137,11 @@ export default function MediaUpload({
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
-            className={`aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${isDragging
-              ? 'border-primary-500 bg-primary-50'
-              : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
-              }`}
+            className={`aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 ${
+              isDragging
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
+            }`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
