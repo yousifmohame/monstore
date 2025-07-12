@@ -2,25 +2,10 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-} from "firebase/firestore";
 import { adminAuth, adminDb as db } from "@/lib/firebase-admin";
 
-// Unified helper function to extract UID from token using either:
-// - Bearer Token in Authorization header
-// - auth-token cookie
+// Unified helper function to extract UID from token
 async function getUserIdFromToken(request: NextRequest) {
-  // Try Authorization header first
   const authHeader = request.headers.get("Authorization");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.split("Bearer ")[1];
@@ -33,7 +18,6 @@ async function getUserIdFromToken(request: NextRequest) {
     }
   }
 
-  // Fallback to auth-token cookie
   const token = request.cookies.get("auth-token")?.value;
   if (!token) {
     throw new Error("Unauthorized: No token found.");
@@ -53,50 +37,39 @@ export async function GET(request: NextRequest) {
     const { uid, isAdmin } = await getUserIdFromToken(request);
     const { searchParams } = new URL(request.url);
 
-    // Parse query parameters
     const status = searchParams.get("status");
     const limitParam = searchParams.get("limit");
     const lastDocId = searchParams.get("lastDocId");
 
-    // Build query
-    let ordersQuery = collection(db, "orders");
-    let constraints: any[] = [];
+    let queryRef = db.collection("orders");
+    let queryBuilder: FirebaseFirestore.Query = queryRef;
 
-    // Regular users can only see their own orders
     if (!isAdmin) {
-      constraints.push(where("userId", "==", uid));
+      queryBuilder = queryBuilder.where("userId", "==", uid);
     }
 
-    // Filter by status if provided
     if (status && status !== "all") {
-      constraints.push(where("status", "==", status));
+      queryBuilder = queryBuilder.where("status", "==", status);
     }
 
-    // Add ordering
-    constraints.push(orderBy("createdAt", "desc"));
+    queryBuilder = queryBuilder.orderBy("createdAt", "desc");
 
-    // Add pagination
     const limitValue = limitParam ? parseInt(limitParam) : 10;
-    constraints.push(limit(limitValue));
+    queryBuilder = queryBuilder.limit(limitValue);
 
-    // Add startAfter if lastDocId is provided
     if (lastDocId) {
-      const lastDocRef = doc(db, "orders", lastDocId);
-      const lastDocSnap = await getDoc(lastDocRef);
+      const lastDocRef = db.collection("orders").doc(lastDocId);
+      const lastDocSnap = await lastDocRef.get();
 
-      if (lastDocSnap.exists()) {
-        constraints.push(startAfter(lastDocSnap));
+      if (lastDocSnap.exists) {
+        queryBuilder = queryBuilder.startAfter(lastDocSnap);
       }
     }
 
-    // Execute query
-    const q = query(ordersQuery, ...constraints);
-    const querySnapshot = await getDocs(q);
+    const snapshot = await queryBuilder.get();
 
-    // Process results
     const orders: any[] = [];
-
-    querySnapshot.forEach((doc) => {
+    snapshot.forEach((doc) => {
       const data = doc.data();
       orders.push({
         id: doc.id,
@@ -123,7 +96,6 @@ export async function POST(request: NextRequest) {
     const { uid } = await getUserIdFromToken(request);
     const orderData = await request.json();
 
-    // Validate order data
     if (!orderData.items || !orderData.items.length) {
       return NextResponse.json(
         { error: "لا توجد منتجات في الطلب" },
@@ -132,25 +104,24 @@ export async function POST(request: NextRequest) {
     }
 
     if (!orderData.shippingAddress) {
-      return NextResponse.json({ error: "عنوان الشحن مطلوب" }, { status: 400 });
+      return NextResponse.json(
+        { error: "عنوان الشحن مطلوب" },
+        { status: 400 }
+      );
     }
 
-    // Generate order number
     const orderNumber = `ORD-${Date.now()}`;
 
-    // Create a new order document with a generated ID
-    const ordersRef = collection(db, "orders");
-    const newOrderRef = doc(ordersRef);
+    const ordersRef = db.collection("orders");
+    const newOrderRef = ordersRef.doc();
     const orderId = newOrderRef.id;
 
-    // Add timestamps, order number, and user ID
     const timestamp = {
       seconds: Math.floor(Date.now() / 1000),
       nanoseconds: 0,
     };
 
-    // Create the order document
-    await setDoc(newOrderRef, {
+    await newOrderRef.set({
       ...orderData,
       userId: uid,
       orderNumber,
@@ -159,11 +130,11 @@ export async function POST(request: NextRequest) {
       updatedAt: timestamp,
     });
 
-    // Clear the user's cart
-    const batch = db.batch();
-    const cartRef = collection(db, "users", uid, "cart");
-    const cartSnapshot = await getDocs(cartRef);
+    // Clear user's cart
+    const cartRef = db.collection("users").doc(uid).collection("cart");
+    const cartSnapshot = await cartRef.get();
 
+    const batch = db.batch();
     cartSnapshot.forEach((doc) => {
       batch.delete(doc.ref);
     });
