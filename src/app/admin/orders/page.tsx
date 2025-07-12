@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Package, Clock, CheckCircle, Truck, Eye, Edit, Trash2 } from 'lucide-react';
+import { Package, Clock, CheckCircle, Truck, Eye } from 'lucide-react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/hooks/useAuth';
+// 1. استيراد الـ Hook الصحيح
 import { useAdminOrders } from '@/hooks/useAdminOrders';
 import type { Order } from '@/hooks/useOrders';
 
@@ -23,7 +24,8 @@ const getStatusInfo = (status: Order['status']) => {
 
 export default function AdminOrdersPage() {
   const { user, profile } = useAuth();
-  const { orders, loading, error, fetchOrders, updateOrderStatus } = useAdminOrders();
+  // 2. **الإصلاح الرئيسي: استخدام اسم الدالة الصحيح `updateOrder`**
+  const { orders, loading, error, fetchOrders, updateOrder } = useAdminOrders();
   const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
@@ -33,21 +35,19 @@ export default function AdminOrdersPage() {
   }, [user, profile, statusFilter, fetchOrders]);
 
   const statusOptions = useMemo(() => {
-    const counts = {
-      all: orders.length,
-      PENDING: orders.filter(o => o.status === 'PENDING').length,
-      PROCESSING: orders.filter(o => o.status === 'PROCESSING').length,
-      SHIPPED: orders.filter(o => o.status === 'SHIPPED').length,
-      DELIVERED: orders.filter(o => o.status === 'DELIVERED').length,
-      CANCELLED: orders.filter(o => o.status === 'CANCELLED').length,
-    };
+    // حساب عدد الطلبات لكل حالة
+    const counts = orders.reduce((acc, order) => {
+        acc[order.status] = (acc[order.status] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+
     return [
-      { value: 'all', label: 'جميع الطلبات', count: counts.all },
-      { value: 'PENDING', label: 'قيد الانتظار', count: counts.PENDING },
-      { value: 'PROCESSING', label: 'قيد المعالجة', count: counts.PROCESSING },
-      { value: 'SHIPPED', label: 'تم الشحن', count: counts.SHIPPED },
-      { value: 'DELIVERED', label: 'تم التسليم', count: counts.DELIVERED },
-      { value: 'CANCELLED', label: 'ملغي', count: counts.CANCELLED }
+      { value: 'all', label: 'جميع الطلبات', count: orders.length },
+      { value: 'PENDING', label: 'قيد الانتظار', count: counts['PENDING'] || 0 },
+      { value: 'PROCESSING', label: 'قيد المعالجة', count: counts['PROCESSING'] || 0 },
+      { value: 'SHIPPED', label: 'تم الشحن', count: counts['SHIPPED'] || 0 },
+      { value: 'DELIVERED', label: 'تم التسليم', count: counts['DELIVERED'] || 0 },
+      { value: 'CANCELLED', label: 'ملغي', count: counts['CANCELLED'] || 0 }
     ];
   }, [orders]);
 
@@ -119,9 +119,10 @@ export default function AdminOrdersPage() {
                       <td className="p-4">
                         <div className="flex gap-2">
                           <Link href={`/admin/orders/${order.id}`}><button className="p-2 text-gray-600 hover:text-blue-600"><Eye className="h-4 w-4" /></button></Link>
+                          {/* **الإصلاح الرئيسي: استدعاء updateOrder** */}
                           <select
                             value={order.status}
-                            onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                            onChange={(e) => updateOrder(order.id, { status: e.target.value as Order['status'] })}
                             className="px-2 py-1 border border-gray-300 rounded-lg text-sm"
                           >
                             <option value="PENDING">قيد المراجعة</option>
