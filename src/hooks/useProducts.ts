@@ -34,7 +34,7 @@ export interface ProductImage {
 }
 
 export interface ProductVariant {
-  id: string;
+  id?: string; // ID for variant
   colorId: string | null;
   sizeId: string | null;
   stock: number;
@@ -57,22 +57,22 @@ export interface Product {
   categoryId: string;
   rating: number;
   reviewsCount: number;
-  tags?: string[];
-  tagsAr?: string[];
   featured: boolean;
   newArrival: boolean;
   bestSeller: boolean;
   onSale: boolean;
   isActive: boolean;
   hasVariants: boolean;
+  images: ProductImage[];
+  category?: any;
+  createdAt: any;
+  updatedAt: any;
+  tags?: string[];
+  tagsAr?: string[];
   colors?: string[];
   sizes?: string[];
   variants?: ProductVariant[];
-  images: ProductImage[];
-  category?: any;
   weight?: number;
-  createdAt: any;
-  updatedAt: any;
 }
 
 export interface ProductFilter {
