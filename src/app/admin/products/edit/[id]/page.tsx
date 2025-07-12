@@ -8,7 +8,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MediaUpload, { MediaItem } from '@/components/MediaUpload';
 import { useAuth } from '@/hooks/useAuth';
-import { useAdminProducts } from '@/hooks/useAdminProducts'; 
+import { useAdminProducts } from '@/hooks/useAdminProducts';
 import { useCategories } from '@/hooks/useCategories';
 
 const generateSlug = (text: string) => {
@@ -22,11 +22,15 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const { product, fetchProductById, updateProduct, loading: isSubmitting, error: apiError } = useAdminProducts();
   const { categories, fetchCategories, loading: categoriesLoading } = useCategories();
 
-  const [formData, setFormData] = useState({
-    nameAr: '', name: '', slug: '', descriptionAr: '', price: '', salePrice: '', sku: '', stock: '', categoryId: '', featured: false
-  });
+  const initialFormData = useMemo(() => ({
+    nameAr: '', name: '', slug: '', descriptionAr: '',
+    price: '', salePrice: '', sku: '', stock: '', categoryId: '', featured: false
+  }), []);
+
+  const [formData, setFormData] = useState(initialFormData);
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loadTimeout, setLoadTimeout] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!user || !profile?.isAdmin) return;
@@ -34,10 +38,15 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       await Promise.all([fetchCategories(), fetchProductById(params.id)]);
     } catch (err) {
       setError('Failed to load product data');
+      console.error('Error loading product:', err);
     }
-  }, [user, profile, fetchCategories, fetchProductById, params.id]);
+  }, [user, profile?.isAdmin, params.id, fetchCategories, fetchProductById]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    const timer = setTimeout(() => setLoadTimeout(true), 10000);
+    loadData();
+    return () => clearTimeout(timer);
+  }, [loadData]);
 
   useEffect(() => {
     if (product) {
@@ -54,17 +63,19 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         featured: product.featured || false,
       });
 
-      const mediaItems: MediaItem[] = (product.images || []).map((img: any) => ({
-        id: img.imageUrl,
+      const mediaItems: MediaItem[] = product.images?.map((img, index) => ({
+        id: `${img.imageUrl}-${index}`,
         url: img.imageUrl,
         type: img.imageUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'image' : 'video',
-        name: img.imageUrl.split('/').pop() || 'صورة موجودة'
-      }));
+        name: img.altText || `صورة ${index + 1}`,
+        file: new File([], img.imageUrl) // placeholder, not for upload again
+      })) || [];
+
       setMedia(mediaItems);
     }
   }, [product]);
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     if (!formData.nameAr.trim() || !formData.name.trim()) {
       setError('يجب إدخال اسم المنتج باللغتين');
       return false;
@@ -83,9 +94,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
     setError(null);
     return true;
-  };
+  }, [formData]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     setFormData(prev => {
@@ -93,9 +104,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       if (name === 'name') updated.slug = generateSlug(value);
       return updated;
     });
-  };
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!product || !validateForm()) return;
 
@@ -111,75 +122,80 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         stock: parseInt(formData.stock) || 0,
         categoryId: formData.categoryId,
         featured: formData.featured,
-        images: media.map(item => ({ imageUrl: item.url })),
+        images: media.map((item, index) => ({
+          imageUrl: item.url,
+          altText: item.name || 'صورة منتج',
+          sortOrder: index,
+          isPrimary: index === 0
+        }))
       };
 
       await updateProduct(product.id, updatedData);
       alert('✅ تم تحديث المنتج بنجاح!');
       router.push('/admin/products');
     } catch (err) {
-      setError(`❌ فشل في تحديث المنتج`);
+      console.error('Update failed:', err);
+      setError(`❌ فشل في تحديث المنتج: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-  };
+  }, [formData, product, updateProduct, router, media, validateForm]);
 
-  if (!user || !profile?.isAdmin) return <div className="p-10 text-center text-red-600 font-semibold">غير مصرح لك بالدخول.</div>;
-  if (!product || categoriesLoading) return <div className="p-10 text-center">جاري التحميل...</div>;
+  const isAdmin = useMemo(() => user && profile?.isAdmin, [user, profile]);
+  const isLoading = useMemo(() => isSubmitting || !product || categoriesLoading, [isSubmitting, product, categoriesLoading]);
+
+  if (!isAdmin) return <div className="p-10 text-center text-red-600 font-semibold">غير مصرح لك بالدخول.</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center">جاري التحميل...</div>;
+  if (apiError) return <div className="p-6 text-red-600">خطأ في التحميل: {apiError}</div>;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="container-custom py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">تعديل المنتج: {formData.nameAr}</h1>
-          <button onClick={() => router.back()} className="flex items-center gap-2 text-blue-600 hover:underline">
+          <button onClick={() => router.back()} className="text-blue-600 hover:underline flex items-center gap-2">
             <ArrowLeft /> العودة
           </button>
         </div>
-
-        {error && <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-lg">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-8">
-              <motion.div className="bg-white rounded-lg shadow p-8">
-                <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                  <Package /> المعلومات الأساسية
-                </h2>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <input type="text" name="nameAr" value={formData.nameAr} onChange={handleChange} placeholder="اسم المنتج (عربي)" required className="input-field" />
-                  <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="اسم المنتج (إنجليزي)" required className="input-field" />
-                  <textarea name="descriptionAr" value={formData.descriptionAr} onChange={handleChange} rows={3} placeholder="الوصف (عربي)" className="input-field md:col-span-2" />
-                  <input type="text" name="slug" value={formData.slug} className="input-field md:col-span-2 bg-gray-100" readOnly />
-                </div>
-              </motion.div>
-              <motion.div className="bg-white rounded-lg shadow p-8">
-                <h2 className="text-2xl font-bold mb-6">الوسائط</h2>
-                <MediaUpload media={media} onMediaChange={setMedia} maxItems={5} />
-              </motion.div>
+        {error && <div className="mb-4 p-4 bg-red-100 text-red-700 rounded">{error}</div>}
+        <form onSubmit={handleSubmit} className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-6">
+            <div className="bg-white p-6 rounded shadow">
+              <h2 className="text-xl font-bold mb-4"><Package /> المعلومات الأساسية</h2>
+              <input name="nameAr" value={formData.nameAr} onChange={handleChange} placeholder="اسم المنتج (عربي)" className="input-field" required />
+              <input name="name" value={formData.name} onChange={handleChange} placeholder="اسم المنتج (إنجليزي)" className="input-field" required />
+              <textarea name="descriptionAr" value={formData.descriptionAr} onChange={handleChange} placeholder="الوصف (عربي)" className="input-field" />
+              <input name="slug" value={formData.slug} readOnly className="input-field bg-gray-100" />
             </div>
-            <div className="space-y-8">
-              <motion.div className="bg-white rounded-lg shadow p-6">
-                <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="السعر" required className="input-field" />
-                <input type="number" name="salePrice" value={formData.salePrice} onChange={handleChange} placeholder="سعر التخفيض" className="input-field" />
-                <input type="text" name="sku" value={formData.sku} onChange={handleChange} placeholder="SKU" className="input-field" />
-                <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="المخزون" className="input-field" />
-              </motion.div>
-              <motion.div className="bg-white rounded-lg shadow p-6">
-                <select name="categoryId" value={formData.categoryId} onChange={handleChange} required className="input-field">
-                  <option value="">اختر الفئة</option>
-                  {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.nameAr}</option>)}
-                </select>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange} />
-                  منتج مميز
-                </label>
-              </motion.div>
-              <motion.div className="bg-white rounded-lg shadow p-6">
-                <button type="submit" disabled={isSubmitting} className="btn-primary w-full flex items-center justify-center gap-2">
-                  {isSubmitting ? <span className="loading-spinner-sm"></span> : <><Save size={18} /> حفظ التغييرات</>}
-                </button>
-              </motion.div>
+            <div className="bg-white p-6 rounded shadow">
+              <h2 className="text-xl font-bold mb-4">الوسائط</h2>
+              <MediaUpload media={media} onMediaChange={setMedia} />
             </div>
+          </div>
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded shadow">
+              <label>السعر *</label>
+              <input name="price" type="number" value={formData.price} onChange={handleChange} className="input-field" required />
+              <label>سعر التخفيض</label>
+              <input name="salePrice" type="number" value={formData.salePrice} onChange={handleChange} className="input-field" />
+              <label>الكمية</label>
+              <input name="stock" type="number" value={formData.stock} onChange={handleChange} className="input-field" />
+              <label>SKU</label>
+              <input name="sku" value={formData.sku} onChange={handleChange} className="input-field" />
+            </div>
+            <div className="bg-white p-6 rounded shadow">
+              <label>الفئة *</label>
+              <select name="categoryId" value={formData.categoryId} onChange={handleChange} className="input-field" required>
+                <option value="">اختر فئة</option>
+                {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.nameAr}</option>)}
+              </select>
+              <div className="flex items-center gap-2 mt-4">
+                <input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange} />
+                <label>منتج مميز</label>
+              </div>
+            </div>
+            <button type="submit" className="btn-primary w-full flex justify-center items-center gap-2" disabled={isSubmitting}>
+              {isSubmitting ? '...جاري الحفظ' : <><Save size={18} /> حفظ التغييرات</>}
+            </button>
           </div>
         </form>
       </div>
