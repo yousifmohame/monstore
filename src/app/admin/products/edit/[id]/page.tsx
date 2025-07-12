@@ -6,7 +6,7 @@ import { Save, ArrowLeft, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import MediaUpload, { MediaItem } from '@/components/MediaUpload';
+import MediaUpload from '@/components/MediaUpload';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminProducts } from '@/hooks/useAdminProducts'; 
 import { useCategories } from '@/hooks/useCategories';
@@ -61,7 +61,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoadTimeout(true);
-    }, 10000); // 10 second timeout
+    }, 10000);
 
     loadData();
 
@@ -83,12 +83,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         featured: product.featured || false,
       });
 
-      const mediaItems: MediaItem[] = product.images?.map((img: any) => ({
-        id: img.imageUrl, // or img.id if available
+      const mediaItems = product.images?.map((img: any) => ({
+        id: img.imageUrl,
         url: img.imageUrl,
-        type: img.imageUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'image' : 'file',
-        name: img.imageUrl.split('/').pop() || 'Existing Image',
-        // Don't create an empty File if not needed
+        type: img.imageUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'image' : 'video',
+        name: img.imageUrl.split('/').pop() || 'Existing Image'
+        // No file property needed for existing images
       })) || [];
       
       setMedia(mediaItems);
@@ -292,8 +292,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <h2 className="text-2xl font-bold mb-6">الوسائط</h2>
                 <MediaUpload 
                   media={media} 
-                  setMedia={setMedia} 
-                  maxFiles={5}
+                  onMediaChange={setMedia}
+                  maxItems={5}
                 />
               </motion.div>
             </div>
