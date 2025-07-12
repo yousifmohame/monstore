@@ -175,48 +175,61 @@ export default function AddProductPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (media.length === 0) {
-      alert('يجب إضافة صورة واحدة على الأقل للمنتج.');
-      return;
-    }
-    if (!formData.categoryId) {
-      alert('يجب اختيار فئة للمنتج.');
-      return;
-    }
+  e.preventDefault();
+  if (media.length === 0) {
+    alert('يجب إضافة صورة واحدة على الأقل للمنتج.');
+    return;
+  }
+  if (!formData.categoryId) {
+    alert('يجب اختيار فئة للمنتج.');
+    return;
+  }
 
-    try {
-      const productData = {
-        ...formData,
-        price: parseFloat(formData.price) || 0,
-        salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
-        stock: getTotalStock(),
-        weight: formData.weight ? parseFloat(formData.weight) : null,
-        tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-        tagsAr: formData.tagsAr.split(',').map((tag) => tag.trim()).filter(Boolean),
-        images: media.map(item => ({ imageUrl: item.url })),
-        colors: selectedColors,
-        sizes: selectedSizes,
-        variants: formData.hasVariants ? variants : [],
-        rating: 0,
-        reviewsCount: 0,
-        isActive: true,
-      };
+  try {
+    const productData = {
+      nameAr: formData.nameAr,
+      name: formData.name,
+      slug: formData.slug,
+      descriptionAr: formData.descriptionAr,
+      description: formData.description,
+      detailedDescriptionAr: formData.detailedDescriptionAr,
+      detailedDescription: formData.detailedDescription,
+      price: parseFloat(formData.price) || 0,
+      salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
+      sku: formData.sku,
+      stock: getTotalStock(),
+      categoryId: formData.categoryId,
+      tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+      tagsAr: formData.tagsAr.split(',').map((tag) => tag.trim()).filter(Boolean),
+      featured: formData.featured,
+      newArrival: formData.newArrival,
+      bestSeller: formData.bestSeller,
+      onSale: formData.onSale,
+      weight: formData.weight ? parseFloat(formData.weight) : null,
+      colors: selectedColors,
+      sizes: selectedSizes,
+      variants: formData.hasVariants ? variants : [],
+      images: media.map(item => ({ imageUrl: item.url })),
+      rating: 0,
+      reviewsCount: 0,
+      isActive: true,
+      hasVariants: formData.hasVariants,
+    };
 
-      // Filter out any items without files and cast to File[]
-      const filesToUpload = media
-        .filter(item => item.file)
-        .map(item => item.file as File);
+    // Filter out any items without files and cast to File[]
+    const filesToUpload = media
+      .filter(item => item.file)
+      .map(item => item.file as File);
 
-      await addProduct(productData, filesToUpload);
+    await addProduct(productData, filesToUpload);
 
-      alert('تم إضافة المنتج بنجاح!');
-      router.push('/admin/products');
-    } catch (error) {
-      console.error("Failed to add product:", error);
-      alert('حدث خطأ أثناء إضافة المنتج. يرجى مراجعة الكونسول.');
-    }
-  };
+    alert('تم إضافة المنتج بنجاح!');
+    router.push('/admin/products');
+  } catch (error) {
+    console.error("Failed to add product:", error);
+    alert('حدث خطأ أثناء إضافة المنتج. يرجى مراجعة الكونسول.');
+  }
+};
 
   if (!user || !profile?.isAdmin) {
     return (
