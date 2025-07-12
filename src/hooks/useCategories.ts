@@ -33,12 +33,16 @@ export interface Category {
   imageUrl: string;
   sortOrder: number;
   isActive: boolean;
-  _count?: {
-    products: number;
-  };
+
+  count?: number; // 🔁 عدد المنتجات
+  emoji?: string; // 🔁 رمز تعبيري للفئة
+  color?: string; // 🔁 لون الخلفية
+  subcategories?: string[]; // 🔁 فئات فرعية
+
   createdAt?: any;
   updatedAt?: any;
 }
+
 
 export const useCategories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
