@@ -8,7 +8,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MediaUpload, { MediaItem } from '@/components/MediaUpload';
 import { useAuth } from '@/hooks/useAuth';
-import { useAdminProducts } from '@/hooks/useAdminProducts'; 
+import { useAdminProducts } from '@/hooks/useAdminProducts';
 import { useCategories } from '@/hooks/useCategories';
 
 const generateSlug = (text: string) => {
@@ -16,7 +16,7 @@ const generateSlug = (text: string) => {
   return text
     .toLowerCase()
     .replace(/ /g, '-')
-    .replace(/[^\w-]+/g, '')
+    .replace(/[^ء-يa-z0-9\-]+/g, '')
     .replace(/--+/g, '-')
     .trim();
 };
@@ -83,14 +83,14 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         featured: product.featured || false,
       });
 
-      const mediaItems = product.images?.map((img: any) => ({
-        id: img.imageUrl,
+      const mediaItems: MediaItem[] = (product.images || []).map((img: any, index: number) => ({
+        id: `${Date.now()}-${index}`,
         url: img.imageUrl,
+        name: img.imageUrl.split('/').pop() || `media-${index}`,
         type: img.imageUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'image' : 'video',
-        name: img.imageUrl.split('/').pop() || 'Existing Image'
-        // No file property needed for existing images
-      })) || [];
-      
+        file: new File([], img.imageUrl.split('/').pop() || `media-${index}`) // dummy file to match type
+      }));
+
       setMedia(mediaItems);
     }
   }, [product]);
