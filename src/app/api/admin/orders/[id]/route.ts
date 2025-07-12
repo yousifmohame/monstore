@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase-admin/firestore";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+// **الإصلاح الرئيسي: استيراد FieldValue من ملف الإعداد الخاص بنا**
+import { adminAuth, adminDb, FieldValue } from "@/lib/firebase-admin";
 
 // دالة مساعدة للتحقق من أن المستخدم هو مدير
 async function verifyAdmin(request: NextRequest) {
@@ -8,9 +8,7 @@ async function verifyAdmin(request: NextRequest) {
   if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error("Unauthorized");
   const token = authHeader.split('Bearer ')[1];
   const decodedToken = await adminAuth.verifyIdToken(token);
-  const userDocRef = adminDb.collection('users').doc(decodedToken.uid);
-  const userDoc = await userDocRef.get();
-  // **الإصلاح هنا: استخدام .exists كخاصية**
+  const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
   if (!userDoc.exists || !userDoc.data()?.isAdmin) throw new Error("Forbidden: Not an admin");
 }
 
@@ -24,10 +22,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
     }
 
+    // **الإصلاح: استخدام الصيغة الصحيحة لـ Admin SDK**
     const orderRef = adminDb.collection('orders').doc(orderId);
     const orderDoc = await orderRef.get();
 
-    // **الإصلاح هنا: استخدام .exists كخاصية**
     if (!orderDoc.exists) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
@@ -39,7 +37,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({
       id: orderDoc.id,
       ...orderData,
-      // **الإصلاح هنا: التأكد من وجود customerDoc قبل الوصول للبيانات**
       customer: customerDoc.exists ? customerDoc.data() : { fullName: 'مستخدم محذوف', email: '' },
       createdAt: orderData.createdAt.toDate().toISOString(),
       updatedAt: orderData.updatedAt.toDate().toISOString(),
@@ -50,7 +47,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
 
 // PUT: تحديث حالة الطلب أو معلومات التتبع
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
@@ -63,10 +59,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: "Order ID and update data are required" }, { status: 400 });
     }
 
+    // **الإصلاح: استخدام الصيغة الصحيحة لـ Admin SDK**
     const orderRef = adminDb.collection('orders').doc(orderId);
     await orderRef.update({
         ...updateData,
-        updatedAt: serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json({ success: true, message: `Order updated successfully` });
