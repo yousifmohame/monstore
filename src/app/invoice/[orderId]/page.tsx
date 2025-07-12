@@ -1,3 +1,4 @@
+// src/app/invoice/[orderId]/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,54 +11,67 @@ import { useAuth } from '@/hooks/useAuth';
 import Image from 'next/image';
 import { useOrders } from '@/hooks/useOrders';
 
+interface OrderItem {
+  productName: string;
+  productNameAr: string;
+  productImage?: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+interface ShippingAddress {
+  fullName: string;
+  phone: string;
+  city: string;
+  postalCode: string;
+  address: string;
+}
+
+interface Order {
+  orderNumber: string;
+  createdAt: string | Date;
+  paymentStatus: 'PAID' | 'UNPAID';
+  paymentMethod: 'credit_card' | 'cash_on_delivery' | string;
+  trackingNumber?: string;
+  status?: 'DELIVERED' | 'SHIPPED' | 'PROCESSING' | 'PENDING';
+  shippingAmount: number;
+  taxAmount: number;
+  subtotal: number;
+  discountAmount: number;
+  totalAmount: number;
+  items: OrderItem[];
+  shippingAddress: ShippingAddress;
+}
+
 export default function InvoicePage({ params }: { params: { orderId: string } }) {
   const router = useRouter();
   const { user } = useAuth();
-  const { fetchOrderById, fetchOrderByOrderNumber, loading } = useOrders();
-  const [order, setOrder] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null); // ✅ السطر المهم المضاف
+  const { fetchOrderById, fetchOrderByOrderNumber, loading, error } = useOrders();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadOrder = async () => {
       try {
-        if (!user) {
-          console.log('Waiting for authentication...');
-          return;
-        }
-
-        console.log('Fetching order with user:', user.id);
+        if (!user) return;
 
         let order = await fetchOrderById(params.orderId);
+        if (!order) order = await fetchOrderByOrderNumber(params.orderId);
 
-        if (!order) {
-          order = await fetchOrderByOrderNumber(params.orderId);
-        }
-
-        if (order) {
-          setOrder(order);
-        } else {
-          setError('Order not found');
-        }
+        if (order) setOrder(order);
+        else setLocalError('Order not found');
       } catch (error) {
         console.error('Order load failed:', error);
-        setError('Failed to load order');
+        setLocalError('Failed to load order');
       }
     };
-
     loadOrder();
   }, [user, params.orderId]);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownload = () => {
-    alert('سيتم إنشاء وتحميل الفاتورة قريبًا');
-  };
-
-  const handleEmailInvoice = () => {
-    alert('تم إرسال الفاتورة إلى بريدك الإلكتروني');
-  };
+  const handlePrint = () => window.print();
+  const handleDownload = () => alert('سيتم إنشاء وتحميل الفاتورة قريبًا');
+  const handleEmailInvoice = () => alert('تم إرسال الفاتورة إلى بريدك الإلكتروني');
 
   if (!user) {
     return (
@@ -66,9 +80,7 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
         <div className="container-custom py-20 text-center">
           <h1 className="text-3xl font-bold">يجب تسجيل الدخول أولاً</h1>
           <p className="text-gray-600 mt-4">لعرض الفاتورة، يرجى تسجيل الدخول.</p>
-          <a href="/auth/login" className="btn-primary mt-4">
-            تسجيل الدخول
-          </a>
+          <a href="/auth/login" className="btn-primary mt-4">تسجيل الدخول</a>
         </div>
         <Footer />
       </div>
@@ -80,9 +92,7 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="container-custom py-20 text-center">
-          <div className="loading-dots mb-4">
-            <div></div><div></div><div></div><div></div>
-          </div>
+          <div className="loading-dots mb-4"><div></div><div></div><div></div><div></div></div>
           <p className="text-xl text-gray-600 font-medium">جاري تحميل الفاتورة...</p>
         </div>
         <Footer />
@@ -90,16 +100,14 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
     );
   }
 
-  if (error || !order) {
+  if (error || localError || !order) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="container-custom py-20 text-center">
           <h1 className="text-3xl font-bold text-red-600">فاتورة غير موجودة</h1>
-          <p className="text-gray-600 mt-4">{error || 'لم يتم العثور على الفاتورة'}</p>
-          <button onClick={() => router.back()} className="btn-primary mt-4">
-            العودة
-          </button>
+          <p className="text-gray-600 mt-4">{error || localError || 'لم يتم العثور على الفاتورة'}</p>
+          <button onClick={() => router.back()} className="btn-primary mt-4">العودة</button>
         </div>
         <Footer />
       </div>
