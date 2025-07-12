@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Save, ArrowLeft, Package } from 'lucide-react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { Upload, X, Image as ImageIcon, Plus, Video, Play, Save, ArrowLeft, Package } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -13,12 +14,7 @@ import { useCategories } from '@/hooks/useCategories';
 
 const generateSlug = (text: string) => {
   if (!text) return '';
-  return text
-    .toLowerCase()
-    .replace(/ /g, '-')
-    .replace(/[^ء-يa-z0-9\-]+/g, '')
-    .replace(/--+/g, '-')
-    .trim();
+  return text.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '').replace(/--+/g, '-').trim();
 };
 
 export default function EditProductPage({ params }: { params: { id: string } }) {
@@ -83,13 +79,13 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         featured: product.featured || false,
       });
 
-      const mediaItems: MediaItem[] = (product.images || []).map((img: any, index: number) => ({
-        id: `${Date.now()}-${index}`,
+      const mediaItems = product.images?.map((img: any, i: number) => ({
+        id: img.imageUrl || `${Date.now()}-${i}`,
         url: img.imageUrl,
-        name: img.imageUrl.split('/').pop() || `media-${index}`,
         type: img.imageUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'image' : 'video',
-        file: new File([], img.imageUrl.split('/').pop() || `media-${index}`) // dummy file to match type
-      }));
+        name: img.imageUrl.split('/').pop() || 'Existing Media',
+        file: new File([], img.imageUrl.split('/').pop() || `file-${i}`)
+      })) || [];
 
       setMedia(mediaItems);
     }
@@ -116,9 +112,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     return true;
   }, [formData]);
 
-  const handleChange = useCallback((
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
 
@@ -134,7 +128,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     if (!product || !validateForm()) return;
 
     try {
-      const updatedData = {
+      const updatedData: Partial<typeof product> = {
         ...formData,
         price: parseFloat(formData.price),
         salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
@@ -152,10 +146,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   }, [formData, product, updateProduct, router, media, validateForm]);
 
   const isAdmin = useMemo(() => user && profile?.isAdmin, [user, profile]);
-  const isLoading = useMemo(() => 
-    isSubmitting || !product || categoriesLoading, 
-    [isSubmitting, product, categoriesLoading]
-  );
+  const isLoading = useMemo(() => isSubmitting || !product || categoriesLoading, [isSubmitting, product, categoriesLoading]);
 
   if (!isAdmin) {
     return (
