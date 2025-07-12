@@ -34,7 +34,9 @@ export interface Category {
   sortOrder: number;
   isActive: boolean;
 
-  count?: number; // 🔁 عدد المنتجات
+  count?: {
+    products: number;
+  }; // 🔁 عدد المنتجات
   emoji?: string; // 🔁 رمز تعبيري للفئة
   color?: string; // 🔁 لون الخلفية
   subcategories?: string[]; // 🔁 فئات فرعية
