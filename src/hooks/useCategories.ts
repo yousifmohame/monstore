@@ -3,8 +3,6 @@
 import { useState, useCallback } from "react";
 import {
   collection,
-  doc,
-  getDoc,
   getDocs,
   query,
   where,
@@ -13,8 +11,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-// 1. واجهة موحدة للفئة
-// This interface is the single source of truth for the Category type.
 export interface Category {
   id: string;
   nameAr: string;
@@ -25,12 +21,12 @@ export interface Category {
   imageUrl: string;
   sortOrder: number;
   isActive: boolean;
-  productsCount?: number; // Optional field for pre-aggregated count
-  _count?: { // Used for display purposes
+  productsCount?: number;
+  _count?: {
     products: number;
   };
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: FirebaseFirestore.Timestamp | Date;
+  updatedAt?: FirebaseFirestore.Timestamp | Date;
 }
 
 export const useCategories = () => {
@@ -38,17 +34,17 @@ export const useCategories = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. دالة محسّنة لجلب الفئات
-  // This function is wrapped in useCallback to prevent infinite loops.
   const fetchCategories = useCallback(async (itemsLimit?: number) => {
     setLoading(true);
     setError(null);
     try {
       const categoriesRef = collection(db, "categories");
       const constraints = [orderBy("sortOrder", "asc")];
+      
       if (itemsLimit) {
         constraints.push(limit(itemsLimit));
       }
+      
       const q = query(categoriesRef, ...constraints);
       const querySnapshot = await getDocs(q);
 
@@ -64,23 +60,23 @@ export const useCategories = () => {
           imageUrl: data.imageUrl,
           sortOrder: data.sortOrder,
           isActive: data.isActive,
-          // Relies on a pre-aggregated field for performance.
           _count: {
             products: data.productsCount || 0, 
           },
+          createdAt: data.createdAt?.toDate(), // Convert Firestore Timestamp to Date
+          updatedAt: data.updatedAt?.toDate(),
         };
       });
 
       setCategories(fetchedCategories);
     } catch (error: any) {
       console.error("Error fetching categories:", error);
-      setError(error.message);
+      setError(error.message || "An unknown error occurred");
     } finally {
       setLoading(false);
     }
-  }, []); // Empty dependency array means this function is created only once.
+  }, []);
 
-  // 3. دالة جلب فئة واحدة بالـ Slug
   const fetchCategoryBySlug = useCallback(async (slug: string) => {
     setLoading(true);
     setError(null);
@@ -93,27 +89,27 @@ export const useCategories = () => {
         setError("Category not found");
         return null;
       }
+      
       const categoryDoc = querySnapshot.docs[0];
-      const categoryData = categoryDoc.data() as Category;
-
+      const categoryData = categoryDoc.data();
+      
       return {
         ...categoryData,
         id: categoryDoc.id,
         _count: {
-            products: categoryData.productsCount || 0,
+          products: categoryData.productsCount || 0,
         },
-      };
+        createdAt: categoryData.createdAt?.toDate(),
+        updatedAt: categoryData.updatedAt?.toDate(),
+      } as Category;
     } catch (error: any) {
       console.error("Error fetching category by slug:", error);
-      setError(error.message);
+      setError(error.message || "An unknown error occurred");
       return null;
     } finally {
       setLoading(false);
     }
   }, []);
-
-  // Note: The admin functions (add, update, delete) are in useAdminCategories.ts
-  // This hook is for client-side data fetching.
 
   return {
     categories,
