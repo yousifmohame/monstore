@@ -54,7 +54,7 @@ export default function CategoriesPage() {
         <Header />
         <div className="container-custom py-20 text-center">
           <h1 className="text-3xl font-bold text-red-600">حدث خطأ</h1>
-          <p className="text-gray-600 mt-4">{error.message || 'فشل في تحميل البيانات'}</p>
+          <p className="text-gray-600 mt-4">{error || 'فشل في تحميل البيانات'}</p>
           <button 
             onClick={() => fetchCategories()} 
             className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
