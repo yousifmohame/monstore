@@ -94,7 +94,10 @@ export default function AddProductPage() {
         isActive: true,
       };
 
-      const filesToUpload = media.map(item => item.file).filter((file): file is File => Boolean(file) && file.size > 0);
+      const filesToUpload: File[] = media
+      .filter((item): item is MediaItem & { file: File } => !!item.file && item.file instanceof File)
+      .map(item => item.file);
+
 
       await addProduct(productData, filesToUpload);
 
