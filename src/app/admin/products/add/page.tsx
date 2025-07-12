@@ -8,10 +8,9 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import MediaUpload, { MediaItem } from '@/components/MediaUpload';
 import { useAuth } from '@/hooks/useAuth';
-import { useAdminProducts } from '@/hooks/useAdminProducts';
+import { useAdminProducts } from '@/hooks/useAdminProducts'; 
 import { useCategories, Category } from '@/hooks/useCategories';
 import { colorOptions, sizeOptions } from '@/lib/mockData';
-// 1. استيراد واجهات الأنواع من مكان واحد فقط
 import { Product, ProductImage } from '@/hooks/useProducts';
 
 interface Variant {
@@ -58,7 +57,7 @@ export default function AddProductPage() {
       return newState;
     });
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (media.length === 0) {
@@ -71,7 +70,6 @@ export default function AddProductPage() {
     }
 
     try {
-      // 2. **الإصلاح الرئيسي: إضافة الحقول المطلوبة وتصحيح الأنواع**
       const productData: Omit<Product, "id" | "createdAt" | "updatedAt"> = {
         nameAr: formData.nameAr,
         name: formData.name,
@@ -81,7 +79,8 @@ export default function AddProductPage() {
         detailedDescriptionAr: formData.detailedDescriptionAr,
         detailedDescription: formData.detailedDescription,
         price: parseFloat(formData.price) || 0,
-        salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
+        // **الإصلاح الرئيسي هنا: استخدام undefined بدلاً من null**
+        salePrice: formData.salePrice ? parseFloat(formData.salePrice) : undefined,
         sku: formData.sku,
         stock: variants.reduce((total, v) => total + v.stock, parseInt(formData.stock) || 0),
         categoryId: formData.categoryId,
@@ -91,22 +90,18 @@ export default function AddProductPage() {
         newArrival: formData.newArrival,
         bestSeller: formData.bestSeller,
         onSale: formData.onSale,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
+        weight: formData.weight ? parseFloat(formData.weight) : undefined,
         colors: selectedColors,
         sizes: selectedSizes,
         variants: formData.hasVariants ? variants : [],
-        images: [] as ProductImage[], // سيتم ملؤها بواسطة دالة الـ backend
+        images: [] as ProductImage[],
         hasVariants: formData.hasVariants,
-        // إضافة القيم الافتراضية للحقول الإلزامية
         rating: 0,
         reviewsCount: 0,
         isActive: true,
       };
 
-      // 3. **الإصلاح الرئيسي: تصفية القيم غير المعرفة من مصفوفة الملفات**
-      const filesToUpload = media
-        .map(item => item.file)
-        .filter((file): file is File => Boolean(file) && file.size > 0);
+      const filesToUpload = media.map(item => item.file).filter((file): file is File => Boolean(file) && file.size > 0);
 
       await addProduct(productData, filesToUpload);
 
@@ -117,10 +112,6 @@ export default function AddProductPage() {
       alert('حدث خطأ أثناء إضافة المنتج.');
     }
   };
-
-  const getTotalStock = () => variants.reduce((total, variant) => total + variant.stock, parseInt(formData.stock) || 0);
-  const handleColorToggle = (colorId: string) => setSelectedColors(p => p.includes(colorId) ? p.filter(id => id !== colorId) : [...p, colorId]);
-  const handleSizeToggle = (sizeId: string) => setSelectedSizes(p => p.includes(sizeId) ? p.filter(id => id !== sizeId) : [...p, sizeId]);
   
   if (!user || !profile?.isAdmin) {
     return <div>غير مصرح لك بالدخول.</div>;
