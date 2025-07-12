@@ -3,26 +3,28 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 
-// استيراد ملف حساب الخدمة مباشرة
-const serviceAccount = require('../../serviceAccount.json');
-
 let app: App;
 
 // هذا النمط يضمن تهيئة التطبيق مرة واحدة فقط في بيئة الخادم
 if (getApps().length === 0) {
+  // **الكود سيعتمد على متغيرات البيئة التي سنضيفها في Vercel**
+  const serviceAccount = {
+    projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+    // معالجة المفتاح الخاص بشكل صحيح من متغيرات البيئة
+    privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+  };
+
   app = initializeApp({
     credential: cert(serviceAccount),
-    // قراءة رابط التخزين مباشرة من project_id الموجود في الملف
-    storageBucket: `${serviceAccount.project_id}.appspot.com`,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 } else {
   app = getApps()[0];
 }
 
-// تهيئة خدمات Firebase وتصديرها
 const adminDb = getFirestore(app);
 const adminAuth = getAuth(app);
 const adminStorage = getStorage(app);
 
-// تصدير FieldValue لتسهيل استخدامه في ملفات API
 export { adminDb, adminAuth, adminStorage, FieldValue };
