@@ -26,14 +26,14 @@ import {
 import { db, storage } from "@/lib/firebase";
 
 // ... (واجهات Product, ProductFilter, ProductVariant, ProductImage تبقى كما هي) ...
-interface ProductImage {
+export interface ProductImage {
   imageUrl: string;
   altText: string;
   sortOrder: number;
   isPrimary: boolean;
 }
 
-interface ProductVariant {
+export interface ProductVariant {
   id: string;
   colorId: string | null;
   sizeId: string | null;
@@ -75,7 +75,7 @@ export interface Product {
   updatedAt: any;
 }
 
-interface ProductFilter {
+export interface ProductFilter {
   category?: string;
   featured?: boolean;
   newArrival?: boolean;
