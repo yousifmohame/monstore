@@ -1,6 +1,6 @@
 /** @format */
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   collection,
   doc,
@@ -9,21 +9,12 @@ import {
   query,
   where,
   orderBy,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
   limit,
 } from "firebase/firestore";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
-} from "firebase/storage";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 
-// ✅ Corrected Interface
+// 1. واجهة موحدة للفئة
+// This interface is the single source of truth for the Category type.
 export interface Category {
   id: string;
   nameAr: string;
@@ -34,60 +25,51 @@ export interface Category {
   imageUrl: string;
   sortOrder: number;
   isActive: boolean;
-
-  count?: {
+  productsCount?: number; // Optional field for pre-aggregated count
+  _count?: { // Used for display purposes
     products: number;
-    [key: string]: number;
   };
-  emoji?: string;
-  color?: string;
-  subcategories?: string[];
-
   createdAt?: any;
   updatedAt?: any;
 }
 
-interface CategoryProductCount extends Category {
-  count: {
-    products: number;
-  };
-}
-
 export const useCategories = () => {
-  const [categories, setCategories] = useState<CategoryProductCount[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchCategories = async () => {
+  // 2. دالة محسّنة لجلب الفئات
+  // This function is wrapped in useCallback to prevent infinite loops.
+  const fetchCategories = useCallback(async (itemsLimit?: number) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-
       const categoriesRef = collection(db, "categories");
-      const q = query(categoriesRef, orderBy("sortOrder", "asc"));
+      const constraints = [orderBy("sortOrder", "asc")];
+      if (itemsLimit) {
+        constraints.push(limit(itemsLimit));
+      }
+      const q = query(categoriesRef, ...constraints);
       const querySnapshot = await getDocs(q);
 
-      const fetchedCategories: CategoryProductCount[] = [];
-
-      for (const document of querySnapshot.docs) {
-        const categoryData = document.data() as Category;
-
-        // Count products for this category
-        const productsRef = collection(db, "products");
-        const productsQuery = query(
-          productsRef,
-          where("categoryId", "==", document.id)
-        );
-        const productsSnapshot = await getDocs(productsQuery);
-
-        fetchedCategories.push({
-          ...categoryData,
-          id: document.id,
-          count: {
-            products: productsSnapshot.size,
+      const fetchedCategories: Category[] = querySnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          nameAr: data.nameAr,
+          name: data.name,
+          slug: data.slug,
+          description: data.description,
+          descriptionAr: data.descriptionAr,
+          imageUrl: data.imageUrl,
+          sortOrder: data.sortOrder,
+          isActive: data.isActive,
+          // Relies on a pre-aggregated field for performance.
+          _count: {
+            products: data.productsCount || 0, 
           },
-        });
-      }
+        };
+      });
 
       setCategories(fetchedCategories);
     } catch (error: any) {
@@ -96,13 +78,13 @@ export const useCategories = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Empty dependency array means this function is created only once.
 
-  const fetchCategoryBySlug = async (slug: string) => {
+  // 3. دالة جلب فئة واحدة بالـ Slug
+  const fetchCategoryBySlug = useCallback(async (slug: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-
       const categoriesRef = collection(db, "categories");
       const q = query(categoriesRef, where("slug", "==", slug), limit(1));
       const querySnapshot = await getDocs(q);
@@ -111,25 +93,16 @@ export const useCategories = () => {
         setError("Category not found");
         return null;
       }
-
       const categoryDoc = querySnapshot.docs[0];
       const categoryData = categoryDoc.data() as Category;
-
-      // Count products for this category
-      const productsRef = collection(db, "products");
-      const productsQuery = query(
-        productsRef,
-        where("categoryId", "==", categoryDoc.id)
-      );
-      const productsSnapshot = await getDocs(productsQuery);
 
       return {
         ...categoryData,
         id: categoryDoc.id,
-        count: {
-          products: productsSnapshot.size,
+        _count: {
+            products: categoryData.productsCount || 0,
         },
-      } as CategoryProductCount;
+      };
     } catch (error: any) {
       console.error("Error fetching category by slug:", error);
       setError(error.message);
@@ -137,170 +110,10 @@ export const useCategories = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const addCategory = async (
-    categoryData: Omit<Category, "id" | "createdAt" | "updatedAt" | "count">,
-    imageFile?: File
-  ) => {
-    try {
-      setLoading(true);
-
-      const categoriesRef = collection(db, "categories");
-      const newCategoryRef = doc(categoriesRef);
-      const categoryId = newCategoryRef.id;
-
-      let imageUrl = categoryData.imageUrl;
-
-      if (imageFile) {
-        const imageRef = ref(
-          storage,
-          `categories/${categoryId}/${imageFile.name}`
-        );
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-      }
-
-      const timestamp = serverTimestamp();
-
-      await setDoc(newCategoryRef, {
-        ...categoryData,
-        imageUrl,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      });
-
-      const newCategory: CategoryProductCount = {
-        id: categoryId,
-        ...categoryData,
-        imageUrl,
-        count: { products: 0 },
-      };
-
-      setCategories([...categories, newCategory]);
-      setLoading(false);
-      return categoryId;
-    } catch (error: any) {
-      console.error("Error adding category:", error);
-      setError(error.message);
-      setLoading(false);
-      throw error;
-    }
-  };
-
-  const updateCategory = async (
-    categoryId: string,
-    categoryData: Partial<Omit<Category, "id" | "count">>,
-    imageFile?: File
-  ) => {
-    try {
-      setLoading(true);
-
-      const categoryRef = doc(db, "categories", categoryId);
-      const categoryDoc = await getDoc(categoryRef);
-
-      if (!categoryDoc.exists()) {
-        throw new Error("Category not found");
-      }
-
-      let imageUrl = categoryData.imageUrl;
-
-      if (imageFile) {
-        const imageRef = ref(
-          storage,
-          `categories/${categoryId}/${imageFile.name}`
-        );
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-
-        const currentCategory = categoryDoc.data() as Category;
-        if (
-          currentCategory.imageUrl &&
-          currentCategory.imageUrl.includes("firebasestorage")
-        ) {
-          try {
-            const oldImagePath = decodeURIComponent(
-              currentCategory.imageUrl.split("/o/")[1].split("?")[0]
-            );
-            const oldImageRef = ref(storage, oldImagePath);
-            await deleteObject(oldImageRef);
-          } catch (error) {
-            console.error("Error deleting old image:", error);
-          }
-        }
-      }
-
-      await updateDoc(categoryRef, {
-        ...categoryData,
-        ...(imageUrl && { imageUrl }),
-        updatedAt: serverTimestamp(),
-      });
-
-      setCategories(
-        categories.map((category) =>
-          category.id === categoryId
-            ? {
-                ...category,
-                ...categoryData,
-                ...(imageUrl && { imageUrl }),
-              }
-            : category
-        )
-      );
-
-      setLoading(false);
-      return true;
-    } catch (error: any) {
-      console.error("Error updating category:", error);
-      setError(error.message);
-      setLoading(false);
-      throw error;
-    }
-  };
-
-  const deleteCategory = async (categoryId: string) => {
-    try {
-      setLoading(true);
-
-      const categoryRef = doc(db, "categories", categoryId);
-      const categoryDoc = await getDoc(categoryRef);
-
-      if (!categoryDoc.exists()) {
-        throw new Error("Category not found");
-      }
-
-      const categoryData = categoryDoc.data() as Category;
-
-      if (
-        categoryData.imageUrl &&
-        categoryData.imageUrl.includes("firebasestorage")
-      ) {
-        try {
-          const imagePath = decodeURIComponent(
-            categoryData.imageUrl.split("/o/")[1].split("?")[0]
-          );
-          const imageRef = ref(storage, imagePath);
-          await deleteObject(imageRef);
-        } catch (error) {
-          console.error("Error deleting image:", error);
-        }
-      }
-
-      await deleteDoc(categoryRef);
-
-      setCategories(
-        categories.filter((category) => category.id !== categoryId)
-      );
-
-      setLoading(false);
-      return true;
-    } catch (error: any) {
-      console.error("Error deleting category:", error);
-      setError(error.message);
-      setLoading(false);
-      throw error;
-    }
-  };
+  // Note: The admin functions (add, update, delete) are in useAdminCategories.ts
+  // This hook is for client-side data fetching.
 
   return {
     categories,
@@ -308,8 +121,5 @@ export const useCategories = () => {
     error,
     fetchCategories,
     fetchCategoryBySlug,
-    addCategory,
-    updateCategory,
-    deleteCategory,
   };
 };
