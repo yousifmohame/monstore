@@ -9,10 +9,9 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Chat from '@/components/Chat';
 import { useAuth } from '@/hooks/useAuth';
-import { useAdminOrders, AdminOrder } from '@/hooks/useAdminOrders';
+import { useAdminOrders } from '@/hooks/useAdminOrders';
 import Image from 'next/image';
 
-// دالة مساعدة لعرض معلومات الحالة
 const getStatusInfo = (status: string) => {
   switch (status) {
     case 'PENDING': return { text: 'قيد المراجعة', color: 'bg-yellow-100 text-yellow-800', icon: Clock };
@@ -27,27 +26,23 @@ const getStatusInfo = (status: string) => {
 export default function OrderDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { user, profile } = useAuth();
-  // 1. استخدام الـ Hook لجلب البيانات والدوال
   const { order, loading, error, fetchOrderById, updateOrder } = useAdminOrders();
   
   const [isEditing, setIsEditing] = useState(false);
   const [editedOrder, setEditedOrder] = useState<any>(null);
 
-  // 2. جلب بيانات الطلب عند تحميل الصفحة
   useEffect(() => {
     if (user && profile?.isAdmin) {
       fetchOrderById(params.id);
     }
   }, [user, profile, params.id, fetchOrderById]);
 
-  // 3. تحديث الحالة المحلية عند وصول بيانات الطلب
   useEffect(() => {
     if (order) {
       setEditedOrder(order);
     }
   }, [order]);
 
-  // 4. ربط دالة حفظ التغييرات بالـ Backend
   const handleSaveChanges = async () => {
     if (!editedOrder) return;
     try {
@@ -58,7 +53,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
       });
       setIsEditing(false);
     } catch (err) {
-      alert('فشل في تحديث الطلب. يرجى المحاولة مرة أخرى.');
+      alert('فشل في تحديث الطلب');
       console.error(err);
     }
   };
@@ -163,6 +158,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
               <div className="space-y-4">
                 {order.items.map((item, index) => (
                   <div key={index} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                    {/* **الإصلاح هنا: استخدام item.productImage** */}
                     <Image src={item.productImage} alt={item.productNameAr} width={64} height={64} className="w-16 h-16 object-cover rounded-lg" />
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-800">{item.productNameAr}</h3>
