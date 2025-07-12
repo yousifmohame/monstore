@@ -11,14 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAdminProducts } from '@/hooks/useAdminProducts'; 
 import { useCategories, Category } from '@/hooks/useCategories';
 import { colorOptions, sizeOptions } from '@/lib/mockData';
-import { Product, ProductImage } from '@/hooks/useProducts';
-
-interface Variant {
-  colorId: string | null;
-  sizeId: string | null;
-  stock: number;
-  sku: string;
-}
+import { Product, ProductImage, ProductVariant } from '@/hooks/useProducts';
 
 const generateSlug = (text: string) => {
   return text.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
@@ -37,11 +30,12 @@ export default function AddProductPage() {
     tags: '', tagsAr: '', featured: false, newArrival: false,
     bestSeller: false, onSale: false, weight: '', hasVariants: false,
   });
+
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const [variants, setVariants] = useState<Variant[]>([]);
-  
+  const [variants, setVariants] = useState<ProductVariant[]>([]); // ✅ التعديل هنا
+
   useEffect(() => {
     if (user && profile?.isAdmin) {
       fetchCategories();
@@ -79,7 +73,6 @@ export default function AddProductPage() {
         detailedDescriptionAr: formData.detailedDescriptionAr,
         detailedDescription: formData.detailedDescription,
         price: parseFloat(formData.price) || 0,
-        // **الإصلاح الرئيسي هنا: استخدام undefined بدلاً من null**
         salePrice: formData.salePrice ? parseFloat(formData.salePrice) : undefined,
         sku: formData.sku,
         stock: variants.reduce((total, v) => total + v.stock, parseInt(formData.stock) || 0),
@@ -128,12 +121,47 @@ export default function AddProductPage() {
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
-              <div className="anime-card p-8"><h2 className="text-2xl font-bold mb-6"><Package /> المعلومات الأساسية</h2><div className="grid md:grid-cols-2 gap-6"><div><label className="block mb-2">اسم المنتج (عربي) *</label><input type="text" name="nameAr" value={formData.nameAr} onChange={handleChange} className="input-field" required /></div><div><label className="block mb-2">اسم المنتج (إنجليزي) *</label><input type="text" name="name" value={formData.name} onChange={handleChange} className="input-field" required /></div><div className="md:col-span-2"><label className="block mb-2">الرابط (slug)</label><input type="text" name="slug" value={formData.slug} className="input-field bg-gray-100" readOnly /></div></div></div>
-              <div className="anime-card p-8"><h2 className="text-2xl font-bold mb-6"><FileText /> صور المنتج</h2><MediaUpload media={media} onMediaChange={setMedia} /></div>
+              <div className="anime-card p-8">
+                <h2 className="text-2xl font-bold mb-6"><Package /> المعلومات الأساسية</h2>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block mb-2">اسم المنتج (عربي) *</label>
+                    <input type="text" name="nameAr" value={formData.nameAr} onChange={handleChange} className="input-field" required />
+                  </div>
+                  <div>
+                    <label className="block mb-2">اسم المنتج (إنجليزي) *</label>
+                    <input type="text" name="name" value={formData.name} onChange={handleChange} className="input-field" required />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block mb-2">الرابط (slug)</label>
+                    <input type="text" name="slug" value={formData.slug} className="input-field bg-gray-100" readOnly />
+                  </div>
+                </div>
+              </div>
+              <div className="anime-card p-8">
+                <h2 className="text-2xl font-bold mb-6"><FileText /> صور المنتج</h2>
+                <MediaUpload media={media} onMediaChange={setMedia} />
+              </div>
             </div>
             <div className="space-y-8">
-              <div className="anime-card p-6"><h3 className="text-xl font-bold mb-4">الفئة والحالة</h3><div><label className="block mb-2">الفئة *</label><select name="categoryId" value={formData.categoryId} onChange={handleChange} className="input-field" required><option value="">اختر الفئة</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.nameAr}</option>)}</select></div></div>
-              <div className="anime-card p-6"><h3 className="text-xl font-bold mb-4">الإجراءات</h3><button type="submit" disabled={isSubmitting} className="w-full btn-primary flex items-center justify-center gap-2 py-3">{isSubmitting ? <div className="loading-spinner-sm"></div> : <><Save />حفظ المنتج</>}</button></div>
+              <div className="anime-card p-6">
+                <h3 className="text-xl font-bold mb-4">الفئة والحالة</h3>
+                <div>
+                  <label className="block mb-2">الفئة *</label>
+                  <select name="categoryId" value={formData.categoryId} onChange={handleChange} className="input-field" required>
+                    <option value="">اختر الفئة</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.nameAr}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="anime-card p-6">
+                <h3 className="text-xl font-bold mb-4">الإجراءات</h3>
+                <button type="submit" disabled={isSubmitting} className="w-full btn-primary flex items-center justify-center gap-2 py-3">
+                  {isSubmitting ? <div className="loading-spinner-sm"></div> : <><Save />حفظ المنتج</>}
+                </button>
+              </div>
             </div>
           </div>
         </form>
