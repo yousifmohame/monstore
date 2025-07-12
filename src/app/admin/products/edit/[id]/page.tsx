@@ -6,7 +6,7 @@ import { Save, ArrowLeft, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import MediaUpload from '@/components/MediaUpload';
+import MediaUpload, { MediaItem } from '@/components/MediaUpload';
 import { useAuth } from '@/hooks/useAuth';
 import { useAdminProducts } from '@/hooks/useAdminProducts'; 
 import { useCategories } from '@/hooks/useCategories';
