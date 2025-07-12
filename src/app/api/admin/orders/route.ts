@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
 // دالة مساعدة للتحقق من أن المستخدم هو مدير
 async function verifyAdmin(request: NextRequest) {
@@ -22,36 +22,29 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    let query = adminDb.collection('orders');
-
+    // **الإصلاح الرئيسي: تعريف المتغير بالنوع الصحيح**
+    let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = adminDb.collection('orders');
+    
+    // تطبيق فلتر الحالة إذا كان موجودًا
     if (status && status !== 'all') {
-      query = query.where('status', '==', status.toUpperCase());
+        query = query.where('status', '==', status.toUpperCase());
     }
-
+    
+    // تطبيق الترتيب دائمًا
     query = query.orderBy('createdAt', 'desc');
-
+    
     const querySnapshot = await query.get();
-
-    const orders = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
+    
+    const orders = querySnapshot.docs.map(doc => ({
         id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate
-          ? data.createdAt.toDate().toISOString()
-          : data.createdAt // إذا كان التاريخ بصيغة أخرى
-            ? new Date(data.createdAt).toISOString()
-            : null,
-      };
-    });
+        ...doc.data(),
+        createdAt: doc.data().createdAt.toDate().toISOString(),
+        updatedAt: doc.data().updatedAt.toDate().toISOString(),
+    }));
 
     return NextResponse.json(orders);
   } catch (error: any) {
-    console.error("Admin Get Orders API Error:", {
-      message: error.message,
-      stack: error.stack,
-      code: error.code,
-    });
+    console.error("Admin Get Orders API Error:", error.message);
     return NextResponse.json(
       { error: error.message },
       { status: error.message.includes("Unauthorized") || error.message.includes("Forbidden") ? 401 : 500 }
