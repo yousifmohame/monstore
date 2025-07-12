@@ -84,11 +84,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       });
 
       const mediaItems: MediaItem[] = product.images?.map((img: any) => ({
-        id: img.imageUrl,
+        id: img.imageUrl, // or img.id if available
         url: img.imageUrl,
-        type: img.imageUrl.match(/\.(jpeg|jpg|gif|png)$/) ? 'image' : 'file',
+        type: img.imageUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? 'image' : 'file',
         name: img.imageUrl.split('/').pop() || 'Existing Image',
-        file: new File([], '')
+        // Don't create an empty File if not needed
       })) || [];
       
       setMedia(mediaItems);
