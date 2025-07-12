@@ -74,7 +74,7 @@ export const useCategories = () => {
         fetchedCategories.push({
           ...categoryData,
           id: documnet.id,
-          _count: {
+          count: {
             products: productsSnapshot.size,
           },
         });
@@ -117,7 +117,7 @@ export const useCategories = () => {
       return {
         ...categoryData,
         id: categoryDoc.id,
-        _count: {
+        count: {
           products: productsSnapshot.size,
         },
       };
@@ -170,7 +170,7 @@ export const useCategories = () => {
         id: categoryId,
         ...categoryData,
         imageUrl,
-        _count: { products: 0 },
+        count: { products: 0 },
       };
 
       setCategories([...categories, newCategory]);
