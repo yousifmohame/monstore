@@ -186,21 +186,22 @@ export default function AddProductPage() {
   }
 
   try {
-    const productData = {
-      nameAr: formData.nameAr,
-      name: formData.name,
-      slug: formData.slug,
-      descriptionAr: formData.descriptionAr,
-      description: formData.description,
-      detailedDescriptionAr: formData.detailedDescriptionAr,
-      detailedDescription: formData.detailedDescription,
+    // Prepare the product data with explicit typing
+    const productData: Omit<Product, "id" | "createdAt" | "updatedAt"> = {
+      nameAr: formData.nameAr.trim(),
+      name: formData.name.trim(),
+      slug: formData.slug.trim(),
+      descriptionAr: formData.descriptionAr.trim(),
+      description: formData.description.trim(),
+      detailedDescriptionAr: formData.detailedDescriptionAr.trim(),
+      detailedDescription: formData.detailedDescription.trim(),
       price: parseFloat(formData.price) || 0,
       salePrice: formData.salePrice ? parseFloat(formData.salePrice) : null,
-      sku: formData.sku,
+      sku: formData.sku.trim(),
       stock: getTotalStock(),
       categoryId: formData.categoryId,
-      tags: formData.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-      tagsAr: formData.tagsAr.split(',').map((tag) => tag.trim()).filter(Boolean),
+      tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+      tagsAr: formData.tagsAr.split(',').map(t => t.trim()).filter(Boolean),
       featured: formData.featured,
       newArrival: formData.newArrival,
       bestSeller: formData.bestSeller,
@@ -216,10 +217,10 @@ export default function AddProductPage() {
       hasVariants: formData.hasVariants,
     };
 
-    // Filter out any items without files and cast to File[]
+    // Prepare files for upload
     const filesToUpload = media
-      .filter(item => item.file)
-      .map(item => item.file as File);
+      .filter((item): item is MediaItem & { file: File } => item.file !== undefined)
+      .map(item => item.file);
 
     await addProduct(productData, filesToUpload);
 
